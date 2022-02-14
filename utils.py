@@ -1,0 +1,292 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import sys
+from scipy.optimize import minimize_scalar
+import xarray as xr
+
+sys.path.append("../neorl/")
+
+from neorl.benchmarks.classic import all_functions, all_names, all_bounds, all_ndim, all_minima_x
+from neorl.benchmarks.cec17 import all_functions as cec_functions
+from neorl.hybrid.aeo import get_algo_ngtonevals, get_algo_nmembers, detect_algo, AEO
+
+class FitWrap:
+    """little class to count number of times a function has been called"""
+    def __init__(self, f):
+        self.n = 0
+        self.outs = []
+        self.ins = []
+        self.fxn = f
+
+    def f(self,*inputs):
+        ans = self.fxn(*inputs)
+        self.n += 1
+        self.ins.append(inputs)
+        self.outs.append(ans)
+        return ans
+
+    def reset(self):
+        self.n = 0
+        self.outs = []
+        self.ins = []
+
+def get_benchmarks(benchset = "all"):
+    #get and filter classic functions
+    def remove_classic(ilist):
+        for i in ilist[::-1]:
+            all_functions.pop(i)
+            all_names.pop(i)
+            all_bounds.pop(i)
+            all_ndim.pop(i)
+            all_minima_x.pop(i)
+
+    #filter unwanted classic functions
+    dimension_criteria_remove = [i for i, a in enumerate(all_ndim) if not (a == "arbitrary" or "+" in a)]
+    remove_classic(dimension_criteria_remove)
+    xminima_criteria_remove = [i for i,a in enumerate(all_minima_x) if not (a in [-1, 0, 1])]
+    remove_classic(xminima_criteria_remove)
+
+    all_minima_y = [a(np.zeros(3) + all_minima_x[i]) for i,a in enumerate(all_functions)]
+
+    #now work on cec17 functions
+    cec_names = ["f%i"%(i+1) for i in range(len(cec_functions))]
+    cec_bounds = [[-100, 100] for _ in cec_functions]
+    cec_minima_y = [100*i for i in range(len(cec_functions))]
+
+    names = all_names + cec_names
+    functions = all_functions + cec_functions
+    bounds = all_bounds + cec_bounds
+    minima = all_minima_y + cec_minima_y
+
+    def remove_bench(ilist):
+        for i in ilist[::-1]:
+            names.pop(i)
+            functions.pop(i)
+            bounds.pop(i)
+            minima.pop(i)
+
+    if benchset == "all":
+        pass
+    elif benchset == "classic":
+        remove_bench([i + len(all_names) for i in range(cec_names)])
+    elif benchset == "cec17":
+        remove_bench(list(range(len(all_names))))
+    elif benchset == "most":
+        remove_bench([7,10,14,15,16,21] + list(range(27,31)) + list(range(37,41)) + list(range(48, 52)))
+    elif benchset == "some":
+        remove_bench(list(range(11,22)) + list(range(25,31)) + list(range(35,41)) + list(range(45, 52)))
+    elif benchset == "few":
+        remove_bench(list(range(8,22)) + list(range(24,31)) + list(range(34,41)) + list(range(44, 52)))
+    elif benchset == "fewest":
+        remove_bench(list(range(7,22)) + list(range(24,31)) + list(range(32,52)))
+
+    functions = [FitWrap(f) for f in functions]
+    return names, functions, bounds, minima
+
+def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = "all", log = "", verbose = False):
+    """opt in optimizer obj, ddict is non-default parameters not fit our bounds"""
+    #pull in all the benchmark functions
+    names, functions, bounds, minima = get_benchmarks(benchset)
+
+    clsc = ['sphere', 'cigar', 'rosenbrock', 'bohachevsky', 'griewank', 'rastrigin', 'ackley',
+            'rastrigin_scaled', 'rastrigin_skew', 'schaffer', 'schwefel2', 'brown', 'expo', 'yang', 'yang2',
+            'yang3', 'yang4', 'zakharov', 'salomon', 'powell', 'happycat', 'levy']
+
+    #select dimension set
+    if dims == "all":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([2, 3, 4, 5, 6, 8, 10, 15, 20, 50])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([2, 10, 20, 30, 50])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([10, 30, 50])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([2, 10, 20, 30, 50])
+            elif n in ["f29", "f30"]:
+                dims.append([10, 30, 50])
+
+    if dims == "most":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([2, 3, 4, 8, 15, 20])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([2, 10, 20, 30])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([10, 30])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([2, 10, 20, 30])
+            elif n in ["f29", "f30"]:
+                dims.append([10, 30])
+
+    if dims == "few":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([2, 3, 4, 8])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([2, 10])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([10])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([2, 10])
+            elif n in ["f29", "f30"]:
+                dims.append([10])
+
+    elif dims == "fewest":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([2])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([2])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([10])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([2])
+            elif n in ["f29", "f30"]:
+                dims.append([10])
+
+    #start making the pandas dataframe to store results
+    colnames = []
+    for i, n in enumerate(names):
+        for d in dims[i]:
+            colnames.append("%s:D%i"%(n, d))
+    results = pd.DataFrame(np.zeros((trials, len(colnames))), columns = colnames)
+
+    #get number of generations to run with dummy optimizer
+    def get_ngen(dummy_optimizer):
+        return ngen
+
+    if not opt is AEO:
+        dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
+        dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
+        ngtoevals = get_algo_ngtonevals(dummy_optimizer)
+        nmembers = get_algo_nmembers(dummy_optimizer)
+        #    we have function which takes number generations and returns fevals
+        #    need to solve inverse problem real quick to input fevals and output generations
+        ngen = minimize_scalar(lambda i, a : np.abs(ngtoevals(i,a) - fevals), [2, 1e9], args = (nmembers))
+        ngen = int(ngen.x)
+    else: #if opt is AEO
+        dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
+        dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
+        ngens = []
+        for o in dummy_optimizer.optimizers:
+            ngtoevals = get_algo_ngtonevals(o)
+            nmembers = get_algo_nmembers(o)
+            ngen = minimize_scalar(lambda i, a : np.abs(ngtoevals(i,a) - fevals), [2, 1e9], args = (nmembers))
+            ngens.append(ngen.x)
+
+        ncyc = int(max(ngens) / ddict["gen_per_cycle"])
+
+
+    #actually run the benchmarks
+    for i, (f, b) in enumerate(zip(functions, bounds)):
+        if verbose:
+            print("On function", i + 1, "/", len(functions))
+        def stop_crit():
+            if len(f.outs) > fevals:
+                return True
+            else:
+                return False
+        for j, d in enumerate(dims[i]):
+            if verbose:
+                print("    On dimension", j+1, "/", len(dims[i]))
+            bounds = {"x%i"%ii:["float"] + b for ii in range(d)}
+            for k in range(trials):
+                optimizer = opt(mode = "min", fit = f.f, bounds = bounds, **ddict)
+                if opt is AEO:
+                    aeo_log = optimizer.evolute(ncyc + 1, stop_criteria = stop_crit)
+                else:
+                    optimizer.evolute(ngen + 1) #one extra in case of rounding when getting ngen
+                y = min(f.outs[:fevals])
+                if len(f.outs[:fevals]) != fevals:
+                    raise Exception("-- Error: not enough function evaluations run!")
+                results.loc[k, names[i] + ":D" + str(d)] = y
+                f.reset()
+        if log:
+            results.to_csv(log)
+
+    return results
+
+def proc_out(path, outfile, scorefile):
+    """process big textfile into netcdf and calculate scores"""
+    dfstarts = []
+    with open(path, "r") as f:
+        c = f.readlines()
+    for i, l in enumerate(c):
+        if l[0] == ",":
+            dfstarts.append(i)
+    numrows = dfstarts[1] - dfstarts[0] - 1
+    das = []
+    for j, i in enumerate(dfstarts):
+        data_list = [ [float(b.strip()) for b in c[a].split(",")[1:]] for a in range(i + 1, i + numrows + 1)]
+        data = np.array(data_list)
+        columns = [a.strip() for a in c[i].split(",")[1:]]
+        xaray = xr.DataArray(data, dims = ["trial", "f"],
+                coords = {"f" : columns, "trial" : np.arange(numrows)})
+        das.append(xaray)
+    da = xr.concat(das, pd.Index(np.arange(len(das)),name = "config"))
+    da.to_netcdf(outfile)
+
+    s = score(da)
+    ws = wt_score(da)
+
+    S = np.vstack([s, ws])
+    np.savetxt(scorefile, S)
+
+def score(da):
+    """do scoring for all configs"""
+    ptara = np.argsort(da, axis = 0)
+    config_scores = ptara.sum("trial").sum("f")
+    return config_scores.data
+
+def wt_score(da):
+    """do scoring for all configs"""
+    ptara = np.argsort(da, axis = 0)
+    wts = [np.sqrt(int(a.split(":")[1][1:])) for a in ptara.coords["f"].data]
+    config_scores = (wts*ptara).sum("trial").sum("f")
+    return config_scores.data
+
+def clean_configs(path, outfile):
+    with open(path, "r") as f:
+        c = f.readlines()
+
+    startlines = [0]
+    for i, l in enumerate(c[:-1]):
+        if "------" in l:
+            startlines.append(i+1)
+
+    csize = startlines[1] - startlines[0]
+    data = []
+    for si in startlines:
+        datapt = []
+        headers = []
+        for i in range(csize-1):
+            try:
+                hdr, ct = c[si + i].split("-")
+                ct = ct.strip()
+            except: #messy
+                hdr = "q"
+                ct = "-1.0"
+            headers.append(hdr)
+            datapt.append(ct)
+        data.append(datapt)
+    df = pd.DataFrame(np.array(data), columns = headers)
+    df.to_csv(outfile)
+
+
+
+if __name__ == "__main__":
+    #proc_out("opt_results/bfewdmostf2500t4g4_res.csv",
+    #        "opt_results/bfewdmostf2500t4g4_res.nc",
+    #        "opt_results/bfewdmostf2500t4g4_score.csv")
+    #clean_configs("opt_results/bfewdmostf2500t4g4_parm.csv", "opt_results/bfewdmostf2500t4g4_parmc.csv")
+    from neorl import DE
+    ddict = {}
+    opt = DE
+    a = run_battery(opt, ddict, fevals = 5000, trials = 7, dims = "all", benchset = "all", log = "", verbose = True)
+    print(a)
