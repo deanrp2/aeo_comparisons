@@ -108,7 +108,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             elif n in ["f29", "f30"]:
                 dims.append([10, 30, 50])
 
-    if dims == "most":
+    elif dims == "most":
         dims = []
         for i, n in enumerate(names):
             if n in clsc:
@@ -122,7 +122,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             elif n in ["f29", "f30"]:
                 dims.append([10, 30])
 
-    if dims == "few":
+    elif dims == "few":
         dims = []
         for i, n in enumerate(names):
             if n in clsc:
@@ -149,6 +149,48 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
                 dims.append([2])
             elif n in ["f29", "f30"]:
                 dims.append([10])
+
+    if dims == "low":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([10, 20,])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([10, 20])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([10])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([10, 20])
+            elif n in ["f29", "f30"]:
+                dims.append([10])
+
+    if dims == "med":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([30])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([30])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([30])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([30])
+            elif n in ["f29", "f30"]:
+                dims.append([30])
+
+    if dims == "high":
+        dims = []
+        for i, n in enumerate(names):
+            if n in clsc:
+                dims.append([50])
+            elif n in ["f%i"%a for a in range(1,11)]:
+                dims.append([50])
+            elif n in ["f%i"%a for a in range(11,21)]:
+                dims.append([50])
+            elif n in ["f%i"%a for a in range(21, 29)]:
+                dims.append([50])
+            elif n in ["f29", "f30"]:
+                dims.append([50])
 
     #start making the pandas dataframe to store results
     colnames = []
