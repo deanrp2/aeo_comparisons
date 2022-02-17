@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sys
+import copy
 from scipy.optimize import minimize_scalar
 import xarray as xr
 
@@ -87,7 +88,7 @@ def get_benchmarks(benchset = "all"):
     functions = [FitWrap(f) for f in functions]
     return names, functions, bounds, minima
 
-def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = "all", log = "", verbose = False):
+def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = "all", nproc = 1):
     """opt in optimizer obj, ddict is non-default parameters not fit our bounds"""
     #pull in all the benchmark functions
     names, functions, bounds, minima = get_benchmarks(benchset)
@@ -227,38 +228,68 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
 
         ncyc = int(max(ngens) / ddict["gen_per_cycle"])
 
-
     #actually run the benchmarks
+    argdicts = []
     for i, (f, b) in enumerate(zip(functions, bounds)):
-        print(names[i])
-        if verbose:
-            print("On function", i + 1, "/", len(functions))
+        for j, d in enumerate(dims[i]):
+            for k in range(trials):
+                argdict = {"trial" : k,
+                           "f" : copy.deepcopy(f),
+                           "fxn_name" : names[i],
+                           "bounds" : b,
+                           "dims" : d,
+                           "ddict" : ddict,
+                           "fevals" : fevals}
+                if opt is AEO:
+                    argdict["is_aeo"] = True
+                    argdict["n"] = ncyc
+                else:
+                    argdict["is_aeo"] = False
+                    argdict["n"] = ngen
+
+                argdicts.append(argdict)
+
+    def wrapper(argdict):
+        """
+        argdict = {"trial" : int,
+                   "f" : fxn_obj,
+                   "fxn_name" : strname,
+                   "bounds" : bnds,
+                   "is_aeo" : bool,
+                   "dims" : d,
+                   "ddict" : ddict,
+                   "fevals" : int
+        """
         def stop_crit():
-            if len(f.outs) > fevals:
+            if len(argdict["f"].outs) > argdict["fevals"]:
                 return True
             else:
                 return False
-        for j, d in enumerate(dims[i]):
-            if verbose:
-                print("    On dimension", j+1, "/", len(dims[i]))
-            bounds = {"x%i"%ii:["float"] + b for ii in range(d)}
-            for k in range(trials):
-                optimizer = opt(mode = "min", fit = f.f, bounds = bounds, **ddict)
-                if opt is AEO:
-                    try:
-                        aeo_log = optimizer.evolute(ncyc + 1, stop_criteria = stop_crit)
-                    except:
-                        print("fxn",names[i],"dim",  d, "trial", k)
-                else:
-                    optimizer.evolute(ngen + 1) #one extra in case of rounding when getting ngen
-                y = min(f.outs[:fevals])
-                if len(f.outs[:fevals]) != fevals:
-                    raise Exception("-- Error: not enough function evaluations run!")
-                results.loc[k, names[i] + ":D" + str(d)] = y
-                f.reset()
-        if log:
-            results.to_csv(log)
 
+        thisf = argdict["f"]
+
+        bounds = {"x%i"%ii:["float"] + argdict["bounds"] for ii in range(argdict["dims"])}
+
+        ddict = argdict["ddict"]
+
+        optimizer = opt(mode = "min", fit = thisf.f, bounds = bounds, **ddict)
+
+        if argdict["is_aeo"] == True:
+            aeo_log = optimizer.evolute(argdict["n"] + 1, stop_criteria = stop_crit)
+        else:
+            optimizer.evolute(argdict["n"] + 1) #one extra in case of rounding when getting ngen
+
+        y = min(thisf.outs[:argdict["fevals"]])
+        if len(thisf.outs[:argdict["fevals"]]) != argdict["fevals"]:
+            raise Exception("-- Error: not enough function evaluations run!")
+
+        return [y, argdict["fxn_name"], argdict["dims"], argdict["trial"]]
+
+    pool = pathos.multiprocessing.Pool(processes = nproc)
+    res = list(tqdm.tqdm(pool.imap(wrapper, argdicts), total = len(argdicts)))
+
+    for y, n, d, t in res:
+        results.loc[t, n + ":D" + str(d)] = y
     return results
 
 def proc_out(path, outfile, scorefile):
@@ -335,7 +366,10 @@ if __name__ == "__main__":
     #        "opt_results/bfewdmostf2500t4g4_score.csv")
     #clean_configs("opt_results/bfewdmostf2500t4g4_parm.csv", "opt_results/bfewdmostf2500t4g4_parmc.csv")
     from neorl import DE
+    import time
     ddict = {}
     opt = DE
-    a = run_battery(opt, ddict, fevals = 5000, trials = 7, dims = "all", benchset = "all", log = "", verbose = True)
-    print(a)
+    start = time.time()
+    a = run_battery(opt, ddict, fevals = 6000, trials = 20, dims = "fewest", benchset = "all", nproc = 60)
+    stop = time.time()
+    print(stop - start)
