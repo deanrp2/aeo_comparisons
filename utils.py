@@ -11,6 +11,9 @@ from neorl.benchmarks.classic import all_functions, all_names, all_bounds, all_n
 from neorl.benchmarks.cec17 import all_functions as cec_functions
 from neorl.hybrid.aeo import get_algo_ngtonevals, get_algo_nmembers, detect_algo, AEO
 
+import pathos.multiprocessing
+import tqdm
+
 class FitWrap:
     """little class to count number of times a function has been called"""
     def __init__(self, f):
@@ -154,13 +157,13 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
         dims = []
         for i, n in enumerate(names):
             if n in clsc:
-                dims.append([10, 20,])
+                dims.append([10])
             elif n in ["f%i"%a for a in range(1,11)]:
-                dims.append([10, 20])
+                dims.append([10])
             elif n in ["f%i"%a for a in range(11,21)]:
                 dims.append([10])
             elif n in ["f%i"%a for a in range(21, 29)]:
-                dims.append([10, 20])
+                dims.append([10])
             elif n in ["f29", "f30"]:
                 dims.append([10])
 
@@ -227,6 +230,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
 
     #actually run the benchmarks
     for i, (f, b) in enumerate(zip(functions, bounds)):
+        print(names[i])
         if verbose:
             print("On function", i + 1, "/", len(functions))
         def stop_crit():
@@ -241,7 +245,10 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             for k in range(trials):
                 optimizer = opt(mode = "min", fit = f.f, bounds = bounds, **ddict)
                 if opt is AEO:
-                    aeo_log = optimizer.evolute(ncyc + 1, stop_criteria = stop_crit)
+                    try:
+                        aeo_log = optimizer.evolute(ncyc + 1, stop_criteria = stop_crit)
+                    except:
+                        print("fxn",names[i],"dim",  d, "trial", k)
                 else:
                     optimizer.evolute(ngen + 1) #one extra in case of rounding when getting ngen
                 y = min(f.outs[:fevals])
