@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 import pandas as pd
 import sys
 import copy
@@ -203,10 +204,6 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             colnames.append("%s:D%i"%(n, d))
     results = pd.DataFrame(np.zeros((trials, len(colnames))), columns = colnames)
 
-    #get number of generations to run with dummy optimizer
-    def get_ngen(dummy_optimizer):
-        return ngen
-
     if not opt is AEO:
         dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
         dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
@@ -219,14 +216,16 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
     else: #if opt is AEO
         dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
         dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
-        ngens = []
+        algonames = [detect_algo(a) for a in dummy_optimizer.optimizers]
+        tot_nmembers = 0
         for o in dummy_optimizer.optimizers:
-            ngtoevals = get_algo_ngtonevals(o)
-            nmembers = get_algo_nmembers(o)
-            ngen = minimize_scalar(lambda i, a : np.abs(ngtoevals(i,a) - fevals), [2, 1e9], args = (nmembers))
-            ngens.append(ngen.x)
+            tot_nmembers += get_algo_nmembers(o)
+        if "DE" in algonames:
+            evals_per_cycle = 2*tot_nmembers*ddict["gen_per_cycle"]
+        else:
+            evals_per_cycle = tot_nmembers*ddict["gen_per_cycle"]
 
-        ncyc = int(max(ngens) / ddict["gen_per_cycle"])
+        ncyc = int(math.ceil(fevals/evals_per_cycle))
 
     #actually run the benchmarks
     argdicts = []
@@ -281,6 +280,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
 
         y = min(thisf.outs[:argdict["fevals"]])
         if len(thisf.outs[:argdict["fevals"]]) != argdict["fevals"]:
+            print(len(thisf.outs))
             raise Exception("-- Error: not enough function evaluations run!")
 
         return [y, argdict["fxn_name"], argdict["dims"], argdict["trial"]]
