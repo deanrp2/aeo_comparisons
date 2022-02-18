@@ -16,14 +16,12 @@ from neorl.hybrid.aeo import AEO
 from utils import run_battery
 from utils import FitWrap
 
-import pathos.multiprocessing
-import tqdm
+nproc = 40
 
 dims = "low"
 fevals = 30000
-dims = "med"
+#dims = "med"
 #fevals = 300000
-fevals = 10000
 #dims = "high"
 #fevals = 3000000
 
@@ -37,27 +35,23 @@ bounds = {"x%i"%a: ["float", -1, 1] for a in range(3)}
 
 #algorithm initialization
 #    diverse ensemble
-de = DE(mode = "min", bounds = bounds, fit = f, F = 0.6, CR = 0.4)
 gwo = GWO(mode = "min", bounds = bounds, fit = f)
 pso = PSO(mode = "min", bounds = bounds, fit = f)
+pso2 = PSO(mode = "min", bounds = bounds, fit = f, speed_mech = "timew")
 woa = WOA(mode = "min", bounds = bounds, fit = f)
 mfo = MFO(mode = "min", bounds = bounds, fit = f)
-diverse_algos = [de, gwo, pso, woa, mfo]
+diverse_algos = [gwo, pso, woa, mfo, pso2]
 
 #    DE ensemble
 de1 = DE(mode = "min", bounds = bounds, fit = f, F = 0.8, CR = 0.2)
 de2 = DE(mode = "min", bounds = bounds, fit = f, F = 0.7, CR = 0.3)
+de3 = DE(mode = "min", bounds = bounds, fit = f, F = 0.6, CR = 0.4)
 de4 = DE(mode = "min", bounds = bounds, fit = f, F = 0.5, CR = 0.5)
-de_ensemble = [de1, de2, de, de4]
+de_ensemble = [de1, de2, de3, de4]
 
-#    large ensemble
-pso2 = PSO(mode = "min", bounds = bounds, fit = f, speed_mech = "timew")
-pso3 = PSO(mode = "min", bounds = bounds, fit = f, speed_mech = "globw")
-large_ensemble = diverse_algos + [de1, de2, de4] + [pso2]#, pso3]
 
 ensemble_set = {"diverse" : diverse_algos,
-                "DE" : de_ensemble,
-                "large" : large_ensemble}
+                "DE" : de_ensemble}
 
 #sepcifying gpc used
 gpc_set = [3, 10, 50]
@@ -76,10 +70,10 @@ for c in aeo_comb:
 
 def battery_wrapper(argdict):
     battery_opts = {"fevals" : fevals,
-                    "trials" : 15,
+                    "trials" : 20,
                     "dims" : dims, 
                     "benchset" : "all", 
-                    "verbose" : True}
+                     "nproc" : nproc}
     ddict = {"gen_per_cycle" : argdict["gpc"],
             "optimizers" : argdict["ensemble_set"]}
     r = run_battery(argdict["algo"], ddict, **battery_opts)
@@ -87,9 +81,6 @@ def battery_wrapper(argdict):
             argdict["gpc"], dims)
     r.to_csv(csv_name)
 
-
-pool = pathos.multiprocessing.Pool(processes = len(aeo_comb))
-r = list(pool.imap(battery_wrapper, argdicts))
-
-
+for argdict in argdicts:
+    battery_wrapper(argdict)
 
