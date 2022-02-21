@@ -280,8 +280,9 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
 
         y = min(thisf.outs[:argdict["fevals"]])
         if len(thisf.outs[:argdict["fevals"]]) != argdict["fevals"]:
-            print(len(thisf.outs))
-            raise Exception("-- Error: not enough function evaluations run!")
+            print("\n", len(thisf.outs),argdict["fxn_name"], "\n")
+            aeo_log.to_netcdf(str(len(thisf.outs)))
+            raise Exception("-- Error: not enough function evaluations run! This many run: " + str(len(thisf.outs)))
 
         return [y, argdict["fxn_name"], argdict["dims"], argdict["trial"]]
 
