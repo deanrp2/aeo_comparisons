@@ -221,9 +221,9 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
         for o in dummy_optimizer.optimizers:
             tot_nmembers += get_algo_nmembers(o)
         if "DE" in algonames:
-            evals_per_cycle = 2*tot_nmembers*ddict["gen_per_cycle"]
+            evals_per_cycle = 2*tot_nmembers*ddict["gen_per_cycle"]*0.96
         else:
-            evals_per_cycle = tot_nmembers*ddict["gen_per_cycle"]
+            evals_per_cycle = tot_nmembers*ddict["gen_per_cycle"]*0.96
 
         ncyc = int(math.ceil(fevals/evals_per_cycle))
 
@@ -258,6 +258,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
                    "dims" : d,
                    "ddict" : ddict,
                    "fevals" : int
+                   "n" : int
         """
         def stop_crit():
             if len(argdict["f"].outs) > argdict["fevals"]:
@@ -274,10 +275,11 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
         optimizer = opt(mode = "min", fit = thisf.f, bounds = bounds, **ddict)
 
         if argdict["is_aeo"] == True:
-            aeo_log = optimizer.evolute(argdict["n"] + 1, stop_criteria = stop_crit)
+            _, _, aeo_log = optimizer.evolute(argdict["n"], stop_criteria = stop_crit)
+            print("Cycles run", aeo_log.attrs["Ncycles"])
+            print("Cycles req", argdict["n"])
         else:
             optimizer.evolute(argdict["n"] + 1) #one extra in case of rounding when getting ngen
-
         y = min(thisf.outs[:argdict["fevals"]])
         if len(thisf.outs[:argdict["fevals"]]) != argdict["fevals"]:
             print("\n", len(thisf.outs),argdict["fxn_name"], "\n")
@@ -371,6 +373,6 @@ if __name__ == "__main__":
     ddict = {}
     opt = DE
     start = time.time()
-    a = run_battery(opt, ddict, fevals = 6000, trials = 20, dims = "fewest", benchset = "all", nproc = 60)
+    a = run_battery(opt, ddict, fevals = 2000, trials = 2, dims = "fewest", benchset = "fewest", nproc = 60)
     stop = time.time()
     print(stop - start)
