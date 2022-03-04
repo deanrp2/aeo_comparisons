@@ -11,19 +11,21 @@ from neorl import GWO
 from neorl import PSO
 from neorl import WOA
 from neorl import MFO
+from neorl import SSA
+from neorl import JAYA
 from neorl.hybrid.aeo import AEO
 
 from utils import run_battery
 from utils import FitWrap
 
-nproc = 40
+nproc = 30
 
 dims = "low"
 fevals = 30000
-#dims = "med"
-#fevals = 300000
-#dims = "high"
-#fevals = 3000000
+dims = "med"
+fevals = 300000
+dims = "high"
+fevals = 3000000
 
 #dummy fxn/variables
 def f(x):
@@ -34,13 +36,12 @@ f = FitWrap(f)
 bounds = {"x%i"%a: ["float", -1, 1] for a in range(3)}
 
 #algorithm initialization
-#    diverse ensemble
+#    animal ensemble
 gwo = GWO(mode = "min", bounds = bounds, fit = f)
-pso = PSO(mode = "min", bounds = bounds, fit = f)
-pso2 = PSO(mode = "min", bounds = bounds, fit = f, speed_mech = "timew")
 woa = WOA(mode = "min", bounds = bounds, fit = f)
 mfo = MFO(mode = "min", bounds = bounds, fit = f)
-diverse_algos = [gwo, pso, woa, mfo, pso2]
+ssa = SSA(mode = "min", bounds = bounds, fit = f)
+animal_ensemble = [gwo, woa, mfo, ssa]
 
 #    DE ensemble
 de1 = DE(mode = "min", bounds = bounds, fit = f, F = 0.8, CR = 0.2)
@@ -49,9 +50,15 @@ de3 = DE(mode = "min", bounds = bounds, fit = f, F = 0.6, CR = 0.4)
 de4 = DE(mode = "min", bounds = bounds, fit = f, F = 0.5, CR = 0.5)
 de_ensemble = [de1, de2, de3, de4]
 
+# large ensemble
+pso = PSO(mode = "min", bounds = bounds, fit = f)
+pso2 = PSO(mode = "min", bounds = bounds, fit = f, speed_mech = "timew")
+jaya = JAYA(mode = "min", bounds = bounds, fit = f)
+large_ensemble = animal_ensemble + [pso, pso2, jaya]
 
-ensemble_set = {"diverse" : diverse_algos,
-                "DE" : de_ensemble}
+ensemble_set = {"animal" : animal_ensemble,
+                "DE" : de_ensemble,
+                "large" : large_ensemble}
 
 #sepcifying gpc used
 gpc_set = [3, 10, 50]
@@ -79,8 +86,8 @@ def battery_wrapper(argdict):
     r = run_battery(argdict["algo"], ddict, **battery_opts)
     csv_name = "comp_results_p1/e%s_g%i_d%s.csv"%(argdict["ensemble_set_name"], 
             argdict["gpc"], dims)
-    r.to_csv(csv_name)
+#    r.to_csv(csv_name)
 
-for argdict in argdicts:
+for argdict in argdicts[-1:]:
     battery_wrapper(argdict)
 
