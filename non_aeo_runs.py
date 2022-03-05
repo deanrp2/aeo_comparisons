@@ -18,14 +18,14 @@ from neorl.hybrid.aeo import AEO
 from utils import run_battery
 from utils import FitWrap
 
-nproc = 60
+nproc = 30
 
 dims = "low"
 fevals = 30000
 dims = "med"
 fevals = 300000
-#dims = "high"
-#fevals = 3000000
+dims = "high"
+fevals = 3000000
 
 def f(x):
     return sum(a**2 for a in x)
