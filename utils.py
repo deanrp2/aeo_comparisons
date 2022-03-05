@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import rankdata
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
@@ -324,8 +325,9 @@ def proc_out(path, outfile, scorefile):
 def score(da):
     """do scoring for all configs"""
     ptara = np.argsort(da, axis = 0)
-    config_scores = ptara.sum("trial").sum("f")
-    return config_scores.data
+    ptara = rankdata(da, method = "min", axis = 0)
+    config_scores = ptara.sum(2).sum(1)
+    return pd.Series(config_scores, index = da.coords["config"])
 
 def wt_score(da):
     """do scoring for all configs"""
