@@ -85,7 +85,7 @@ def battery_wrapper(argdict):
     r = run_battery(argdict["algo"], ddict, **battery_opts)
     csv_name = "comp_results_p1/e%s_g%i_d%s.csv"%(argdict["ensemble_set_name"], 
             argdict["gpc"], dims)
-    r.to_csv(csv_name)
+#    r.to_csv(csv_name)
 
 for argdict in argdicts[-1:]:
     battery_wrapper(argdict)
