@@ -75,7 +75,7 @@ def get_benchmarks(benchset = "all"):
     if benchset == "all":
         pass
     elif benchset == "classic":
-        remove_bench([i + len(all_names) for i in range(cec_names)])
+        remove_bench([i + len(all_names) for i in range(len(cec_names))])
     elif benchset == "cec17":
         remove_bench(list(range(len(all_names))))
     elif benchset == "most":
