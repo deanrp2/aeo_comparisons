@@ -324,9 +324,15 @@ def proc_out(path, outfile, scorefile):
 
 def score(da):
     """do scoring for all configs"""
-    ptara = np.argsort(da, axis = 0)
     ptara = rankdata(da, method = "min", axis = 0)
     config_scores = ptara.sum(2).sum(1)
+    return pd.Series(config_scores, index = da.coords["config"])
+
+def firsts(da):
+    """give first place percent for all configs"""
+    ptara = rankdata(da, method = "min", axis = 0)
+    config_scores = (ptara == 1).sum(2).sum(1)
+    config_scores = config_scores/(ptara.shape[1]*ptara.shape[2])*100
     return pd.Series(config_scores, index = da.coords["config"])
 
 def wt_score(da):
