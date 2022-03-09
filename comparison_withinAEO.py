@@ -6,7 +6,6 @@ from pathlib import Path
 import xarray as xr
 
 
-
 results_dir = Path("comp_results_p1")
 
 dimsets = ["low", "med", "high"]

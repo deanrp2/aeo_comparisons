@@ -18,14 +18,25 @@ from neorl.hybrid.aeo import AEO
 from utils import run_battery
 from utils import FitWrap
 
-nproc = 30
+nproc = 8
 
+sset = "all"
+dest = "1"
 dims = "low"
 fevals = 30000
 dims = "med"
 fevals = 300000
 dims = "high"
 fevals = 3000000
+
+sset = "classic"
+dest = "2"
+dims = "low"
+fevals = 20000
+dims = "med"
+fevals = 40000
+dims = "high"
+fevals = 60000
 
 def f(x):
     return sum(a**2 for a in x)
@@ -78,15 +89,15 @@ def battery_wrapper(argdict):
     battery_opts = {"fevals" : fevals,
                     "trials" : 20,
                     "dims" : dims, 
-                    "benchset" : "all", 
+                    "benchset" : sset, 
                      "nproc" : nproc}
     ddict = {"gen_per_cycle" : argdict["gpc"],
             "optimizers" : argdict["ensemble_set"]}
     r = run_battery(argdict["algo"], ddict, **battery_opts)
-    csv_name = "comp_results_p1/e%s_g%i_d%s.csv"%(argdict["ensemble_set_name"], 
+    csv_name = "comp_results_p%s/e%s_g%i_d%s.csv"%(dest, argdict["ensemble_set_name"], 
             argdict["gpc"], dims)
-#    r.to_csv(csv_name)
+    r.to_csv(csv_name)
 
-for argdict in argdicts[-1:]:
+for argdict in argdicts:
     battery_wrapper(argdict)
 
