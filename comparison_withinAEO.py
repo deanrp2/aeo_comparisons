@@ -38,7 +38,7 @@ nicnames = ["Animal", "DE", "Large"]
 nn = []
 for e in nicnames:
     for g in gpcsets:
-        nn.append(e + ", gpc: " + str(g))
+        nn.append(e + ", $N_g$: " + str(g))
 
 score_master_table = pd.DataFrame(np.zeros((9, 3)),
         columns = nicdims,
@@ -60,9 +60,10 @@ firsts_master_table.index = nn
 
 def stitch(df1, df2):
     a = df1.astype(str)
-    b = " (" + df2.astype(int).astype(str) + "%)"
+    b = " (" + df2.astype(int).astype(str) + "\%)"
     return a + b
 
 
 c = stitch(score_master_table, firsts_master_table)
-print(c.to_latex())
+print(c.to_latex(escape=False, column_format = "cccc"))
+print(c.to_csv())
