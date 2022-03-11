@@ -25,10 +25,10 @@ from utils import FitWrap
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
-fevals = 20000
 dims = 10
 
-fxns = [cls.schaffer, cec.f13, cec.f24]
+fxns = [cls.schaffer, cec.f13, cec.f28]
+fnames = ["Schaffer", "f13", "f28"]
 f_bounds = [[-100, 100], [-100, 100], [-100, 100]]
 
 bnds = []
@@ -39,7 +39,7 @@ for b in f_bounds:
 
 
 
-fig, ax = plt.subplots(1, 3, figsize = (3, 8), sharex = True)
+fig, ax = plt.subplots(1, 3, figsize = (11, 3), sharex = True)
 for i, (f, b) in enumerate(zip(fxns, bnds)):
     f = FitWrap(f)
 
@@ -70,24 +70,39 @@ for i, (f, b) in enumerate(zip(fxns, bnds)):
     ensemble_set = {"animal" : animal_ensemble,
                     "DE" : de_ensemble,
                     "large" : large_ensemble}
-
     #sepcifying gpc used
     gpc_set = [3, 10, 50]
 
+    #combos to run
+    cruns = [["animal", 10], ["DE", 3], ["large", 10]]
+    cycles = [10, 6, 3]
+
     cyclenums = []
+    minpts = []
     def cheat_stop_criteria():
         cyclenums.append(len(f.outs))
+        minpts.append(np.min(f.outs))
         return False
 
-    for name, e in ensemble_set.items():
-        for g in gpc_set:
-            a = AEO(mode = "min", bounds = b, optimizers = e, fit = f.f, gen_per_cycle = g)
-            a.evolute(10, stop_criteria = cheat_stop_criteria)
-            ax[i].plot(np.arange(len(f.outs)), f.outs)
-            ax[i].plot(cyclenums, [0]*len(cyclenums), "k.")
-            f.reset()
-            cyclenums = []
+    colors = ["k", "r", "b", "c"]
+    for j, (name, g) in enumerate(cruns):
+        e = ensemble_set[name]
+        print(name, g)
+        a = AEO(mode = "min", bounds = b, optimizers = e, fit = f.f, gen_per_cycle = g)
+        a.evolute(cycles[j], stop_criteria = cheat_stop_criteria)
+        ax[i].semilogy(np.arange(len(f.outs)), np.minimum.accumulate(f.outs), "--", color = colors[j], linewidth = 1.0, label = name[0].upper() + name[1:] + r", $N_g$: " + str(g))
+        ax[i].plot(cyclenums, minpts, "x", color = colors[j], markersize = 4)
+        f.reset()
+        cyclenums = []
+        minpts = []
+    ax[i].set_ylabel(fnames[i])
+    ax[i].set_xlabel("F evaluations")
 
-#TODO: cumulative min
-#TODO: make cycle divs correct color and right heigh
+
+
+ax[2].legend()
+plt.tight_layout()
+
+fig.savefig("figures/withinfig.pdf")
+
 plt.show()
