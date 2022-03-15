@@ -99,6 +99,10 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             'rastrigin_scaled', 'rastrigin_skew', 'schaffer', 'schwefel2', 'brown', 'expo', 'yang', 'yang2',
             'yang3', 'yang4', 'zakharov', 'salomon', 'powell', 'happycat', 'levy']
 
+    for c, m, f in zip(clsc, minima, functions):
+        print(c, m, f.f([m]*3), f.f([m]*8))
+
+
     #select dimension set
     if dims == "all":
         dims = []
@@ -330,9 +334,10 @@ def score(da):
 
 def firsts(da):
     """give first place percent for all configs"""
-    ptara = rankdata(da, method = "min", axis = 0)
+    ptara = rankdata(da,  method = "min", axis = 0)
     config_scores = (ptara == 1).sum(2).sum(1)
-    config_scores = config_scores/(ptara.shape[1]*ptara.shape[2])*100
+    config_scores = config_scores/(da.shape[1]*da.shape[2])*100
+    np.set_printoptions(threshold = np.inf)
     return pd.Series(config_scores, index = da.coords["config"])
 
 def wt_score(da):
@@ -342,45 +347,12 @@ def wt_score(da):
     config_scores = (wts*ptara).sum("trial").sum("f")
     return config_scores.data
 
-def clean_configs(path, outfile):
-    with open(path, "r") as f:
-        c = f.readlines()
-
-    startlines = [0]
-    for i, l in enumerate(c[:-1]):
-        if "------" in l:
-            startlines.append(i+1)
-
-    csize = startlines[1] - startlines[0]
-    data = []
-    for si in startlines:
-        datapt = []
-        headers = []
-        for i in range(csize-1):
-            try:
-                hdr, ct = c[si + i].split("-")
-                ct = ct.strip()
-            except: #messy
-                hdr = "q"
-                ct = "-1.0"
-            headers.append(hdr)
-            datapt.append(ct)
-        data.append(datapt)
-    df = pd.DataFrame(np.array(data), columns = headers)
-    df.to_csv(outfile)
-
-
-
 if __name__ == "__main__":
-    #proc_out("opt_results/bfewdmostf2500t4g4_res.csv",
-    #        "opt_results/bfewdmostf2500t4g4_res.nc",
-    #        "opt_results/bfewdmostf2500t4g4_score.csv")
-    #clean_configs("opt_results/bfewdmostf2500t4g4_parm.csv", "opt_results/bfewdmostf2500t4g4_parmc.csv")
     from neorl import DE
     import time
     ddict = {}
     opt = DE
     start = time.time()
-    a = run_battery(opt, ddict, fevals = 2000, trials = 2, dims = "fewest", benchset = "fewest", nproc = 60)
+    a = run_battery(opt, ddict, fevals = 2000, trials = 2, dims = "fewest", benchset = "classic", nproc = 60)
     stop = time.time()
     print(stop - start)
