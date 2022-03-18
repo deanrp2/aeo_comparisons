@@ -14,7 +14,8 @@ def stitch(df1, df2):
 np.set_printoptions(floatmode = "fixed")
 
 outside_algos = ["DE", "GWO", "JAYA", "MFO", "PSO", "SSA", "WOA"]
-inside_ensembles = ["animal", "DE", "large"]
+#inside_ensembles = ["animal", "DE", "large"]
+inside_ensembles = ["animal", "large"]
 
 dimsets = ["low", "med", "high"]
 
@@ -77,7 +78,7 @@ for d in dimsets:
     cec_firsts.append(s2)
 
 nicdims = ["Low Dimension Set", "Medium Dimension Set", "High Dimension Set"]
-nicnames = ["AEO: Animal", "AEO: DE", "AEO: Large"] + outside_algos
+nicnames = ["AEO: Animal", "AEO: Large"] + outside_algos
 
 #total
 score_master_table = pd.DataFrame(np.ones((len(nicnames), 3)),
