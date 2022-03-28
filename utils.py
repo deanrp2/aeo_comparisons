@@ -90,7 +90,7 @@ def get_benchmarks(benchset = "all"):
     functions = [FitWrap(f) for f in functions]
     return names, functions, bounds, minima
 
-def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = "all", nproc = 1):
+def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = "all", ngen = None, nproc = 1):
     """opt in optimizer obj, ddict is non-default parameters not fit our bounds"""
     #pull in all the benchmark functions
     names, functions, bounds, minima = get_benchmarks(benchset)
@@ -98,10 +98,6 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
     clsc = ['sphere', 'cigar', 'rosenbrock', 'bohachevsky', 'griewank', 'rastrigin', 'ackley',
             'rastrigin_scaled', 'rastrigin_skew', 'schaffer', 'schwefel2', 'brown', 'expo', 'yang', 'yang2',
             'yang3', 'yang4', 'zakharov', 'salomon', 'powell', 'happycat', 'levy']
-
-    for c, m, f in zip(clsc, minima, functions):
-        print(c, m, f.f([m]*3), f.f([m]*8))
-
 
     #select dimension set
     if dims == "all":
@@ -209,7 +205,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             colnames.append("%s:D%i"%(n, d))
     results = pd.DataFrame(np.zeros((trials, len(colnames))), columns = colnames)
 
-    if not opt is AEO:
+    if not (opt is AEO) and (ngen is None):
         dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
         dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
         ngtoevals = get_algo_ngtonevals(dummy_optimizer)
@@ -218,7 +214,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
         #    need to solve inverse problem real quick to input fevals and output generations
         ngen = minimize_scalar(lambda i, a : np.abs(ngtoevals(i,a) - fevals), [2, 1e9], args = (nmembers))
         ngen = int(ngen.x)
-    else: #if opt is AEO
+    elif opt is AEO: #if opt is AEO
         dummy_bounds = {"x%i"%ii:["float"] + bounds[0] for ii in range(dims[0][0])}
         dummy_optimizer = opt(mode = "min", fit = functions[0].f, bounds = dummy_bounds, **ddict)
         algonames = [detect_algo(a) for a in dummy_optimizer.optimizers]
@@ -226,11 +222,12 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
         for o in dummy_optimizer.optimizers:
             tot_nmembers += get_algo_nmembers(o)
         if "DE" in algonames:
-            evals_per_cycle = 2*tot_nmembers*ddict["gen_per_cycle"]*0.96
+            evals_per_cycle = 2*tot_nmembers*ddict["gen_per_cycle"]*0.98
         else:
-            evals_per_cycle = tot_nmembers*ddict["gen_per_cycle"]*0.96
+            evals_per_cycle = tot_nmembers*ddict["gen_per_cycle"]*0.98
 
         ncyc = int(math.ceil(fevals/evals_per_cycle))
+    #else ngen is given in the args
 
     #actually run the benchmarks
     argdicts = []
@@ -243,7 +240,8 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
                            "bounds" : b,
                            "dims" : d,
                            "ddict" : ddict,
-                           "fevals" : fevals}
+                           "fevals" : fevals,
+                           "seed" : np.random.randint(3, 20000)}
                 if opt is AEO:
                     argdict["is_aeo"] = True
                     argdict["n"] = ncyc
@@ -264,12 +262,15 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
                    "ddict" : ddict,
                    "fevals" : int
                    "n" : int
+                   "seed" : int
         """
         def stop_crit():
             if len(argdict["f"].outs) > argdict["fevals"]:
                 return True
             else:
                 return False
+
+        np.random.seed(argdict["seed"])
 
         thisf = argdict["f"]
 
@@ -290,7 +291,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
             print("\n", len(thisf.outs),argdict["fxn_name"], "\n")
             aeo_log.to_netcdf(argdict["fxn_name"] + str(len(thisf.outs)))
             raise Exception("-- Error: not enough function evaluations run! This many run: " + str(len(thisf.outs)))
-
+        thisf.reset()
         return [y, argdict["fxn_name"], argdict["dims"], argdict["trial"]]
 
     pool = pathos.multiprocessing.Pool(processes = nproc)
