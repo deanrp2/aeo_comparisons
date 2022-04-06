@@ -43,8 +43,8 @@ bounds = {"x%i"%a: ["float", -1, 1] for a in range(3)}
 
 algos = [PESA2, EDEV, HCLPSO, EPSO]
 algo_name = ["PESA2", "EDEV", "HCLPSO", "EPSO"]
-algos = [PESA2]
-algo_name = ["PESA2"]
+algos = [EDEV]
+algo_name = ["EDEV"]
 
 def battery_wrapper(algo, algo_name):
     battery_opts = {"fevals" : fevals,
