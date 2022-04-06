@@ -55,7 +55,7 @@ def battery_wrapper(algo, algo_name):
 
     if algo_name == "PESA2":
         battery_opts["ngen"] = int(np.ceil((fevals-100)/150))
-        ddict = {"nwhales" : 5}
+        ddict = {"nwhales" : 5, "memory_size" : 5000}
     elif algo_name == "EDEV":
         battery_opts["ngen"] = int(np.ceil((fevals)/100))
         ddict = {}
