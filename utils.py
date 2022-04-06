@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from scipy.stats import rankdata
 import matplotlib.pyplot as plt
 import math
@@ -271,6 +272,7 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
                 return False
 
         np.random.seed(argdict["seed"])
+        random.seed(argdict["seed"])
 
         thisf = argdict["f"]
 
