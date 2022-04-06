@@ -23,20 +23,20 @@ class FitWrap:
     def __init__(self, f):
         self.n = 0
         self.outs = []
-        self.ins = []
+#        self.ins = []
         self.fxn = f
 
     def f(self,*inputs):
         ans = self.fxn(*inputs)
         self.n += 1
-        self.ins.append(inputs)
+#        self.ins.append(inputs)
         self.outs.append(ans)
         return ans
 
     def reset(self):
         self.n = 0
         self.outs = []
-        self.ins = []
+#        self.ins = []
 
 def get_benchmarks(benchset = "all"):
     #get and filter classic functions
