@@ -5,38 +5,34 @@ import random
 import sys
 sys.path.append("../neorl")
 
-from neorl import DE
-from neorl import ES
-from neorl import GWO
-from neorl import PSO
-from neorl import WOA
-from neorl import MFO
-from neorl import SSA
-from neorl import JAYA
-from neorl.hybrid.aeo import AEO
+from neorl import PESA2
+from neorl import EDEV
+from neorl import HCLPSO
+from neorl import EPSO
 
 from utils import run_battery
 from utils import FitWrap
 
-nproc = 6
+nproc = 40
 
-sset = "all"
+sset = "cec17"
 dest = "1"
-dims = "low"
-fevals = 30000
-dims = "med"
-fevals = 300000
+#dims = "low"
+#fevals = 30000
+#dims = "med"
+#fevals = 300000
 dims = "high"
 fevals = 3000000
 
-sset = "classic"
-dest = "2"
-dims = "low"
-fevals = 20000
-dims = "med"
-fevals = 40000
-dims = "high"
-fevals = 60000
+#sset = "classic"
+#dest = "2"
+#dims = "low"
+#fevals = 20000
+#dims = "med"
+#fevals = 40000
+#dims = "high"
+#fevals = 60000
+
 
 def f(x):
     return sum(a**2 for a in x)
@@ -45,29 +41,34 @@ f = FitWrap(f)
 
 bounds = {"x%i"%a: ["float", -1, 1] for a in range(3)}
 
-#algorithm initialization
-#    animal ensemble
-gwo = GWO(mode = "min", bounds = bounds, fit = f)
-woa = WOA(mode = "min", bounds = bounds, fit = f)
-mfo = MFO(mode = "min", bounds = bounds, fit = f)
-ssa = SSA(mode = "min", bounds = bounds, fit = f)
-de = DE(mode = "min", bounds = bounds, fit = f)
-pso = PSO(mode = "min", bounds = bounds, fit = f)
-jaya = JAYA(mode = "min", bounds = bounds, fit = f)
-
-algos = [GWO, WOA, MFO, SSA, DE, PSO, JAYA]
-algo_name = ["GWO", "WOA", "MFO", "SSA", "DE", "PSO", "JAYA"]
-
+algos = [PESA2, EDEV, HCLPSO, EPSO]
+algo_name = ["PESA2", "EDEV", "HCLPSO", "EPSO"]
+algos = [PESA2]
+algo_name = ["PESA2"]
 
 def battery_wrapper(algo, algo_name):
     battery_opts = {"fevals" : fevals,
                     "trials" : 20,
-                    "dims" : dims, 
-                    "benchset" : sset, 
+                    "dims" : dims,
+                    "benchset" : sset,
                      "nproc" : nproc}
-    r = run_battery(algo, {}, **battery_opts)
+
+    if algo_name == "PESA2":
+        battery_opts["ngen"] = int(np.ceil((fevals-100)/150))
+        ddict = {"nwhales" : 5}
+    elif algo_name == "EDEV":
+        battery_opts["ngen"] = int(np.ceil((fevals)/100))
+        ddict = {}
+    elif algo_name == "HCLPSO":
+        battery_opts["ngen"] = int(np.ceil(fevals/40 - 1))
+        ddict = {}
+    elif algo_name == "EPSO":
+        battery_opts["ngen"] = int(np.ceil(fevals/40 - 1))
+        ddict = {}
+
+    r = run_battery(algo, ddict, **battery_opts)
     csv_name = "comp_results_p%s/e%s_d%s.csv"%(dest, algo_name, dims)
-    r.to_csv(csv_name)
+#    r.to_csv(csv_name)
 
 for a, n in zip(algos, algo_name):
     battery_wrapper(a, n)
