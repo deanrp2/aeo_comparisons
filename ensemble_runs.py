@@ -68,7 +68,7 @@ def battery_wrapper(algo, algo_name):
 
     r = run_battery(algo, ddict, **battery_opts)
     csv_name = "comp_results_p%s/e%s_d%s.csv"%(dest, algo_name, dims)
-#    r.to_csv(csv_name)
+    r.to_csv(csv_name)
 
 for a, n in zip(algos, algo_name):
     battery_wrapper(a, n)
