@@ -5,7 +5,7 @@ from pathlib import Path
 esets = ["animal", "DE", "large"]
 gpcsets = ["3", "10", "50"]
 
-standalone = ["DE", "GWO", "JAYA", "MFO", "PSO", "SSA", "WOA"]
+standalone = ["DE", "GWO", "JAYA", "MFO", "PSO", "SSA", "WOA", "PESA2", "EDEV", "EPSO", "HCLPSO"]
 
 algonames = []
 for e in esets:
