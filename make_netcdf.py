@@ -1,11 +1,12 @@
 import pandas as pd
+from pandas import ExcelWriter
 import xarray as xr
 from pathlib import Path
 
 esets = ["animal", "DE", "large"]
 gpcsets = ["3", "10", "50"]
 
-standalone = ["DE", "GWO", "JAYA", "MFO", "PSO", "SSA", "WOA", "PESA2", "EDEV", "EPSO", "HCLPSO"]
+standalone = ["DE", "GWO", "JAYA", "MFO", "PSO", "SSA", "WOA"]#, "PESA2", "EDEV", "EPSO", "HCLPSO"]
 
 algonames = []
 for e in esets:
@@ -38,4 +39,17 @@ for a in algonames:
 
 res = xr.merge(wholedas)
 res.to_netcdf("benchmark_results.nc")
+
+sum_mean = res.mean("trial")
+sum_std = res.std("trial")
+
+writer = ExcelWriter("benchmark_results_summary.xlsx")
+
+for k, v in sum_mean.items():
+    v.to_pandas().T.to_excel(writer, k + "_mean")
+for k, v in sum_std.items():
+    v.to_pandas().T.to_excel(writer, k + "_std")
+
+writer.save()
+
 
