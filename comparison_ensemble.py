@@ -139,6 +139,7 @@ print("\n")
 print("Cec2017 Set")
 print(cec17)
 print("\n")
+exit()
 ###
 print("Complete Set")
 print(total.to_csv())
