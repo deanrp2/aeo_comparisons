@@ -7,8 +7,9 @@ short = True
 #low p value means different
 
 ds = xr.load_dataset("benchmark_results.nc")
+ds = ds.drop(["GWO", "MFO", "WOA", "SSA", "DE", "JAYA", "PSO", "large,gpc3"])
 
-compare = "large,gpc3"
+compare = "animal,gpc3"
 
 if short:
     dedrops = ["DE,gpc"+str(a) for a in [3,10,50]]
