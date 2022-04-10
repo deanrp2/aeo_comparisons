@@ -7,6 +7,7 @@ short = True
 #low p value means different
 
 ds = xr.load_dataset("benchmark_results.nc")
+ds = ds.drop(["PESA2", "EDEV", "EPSO", "HCLPSO"])
 
 compare = "large,gpc3"
 
