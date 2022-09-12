@@ -5,7 +5,7 @@ import xarray as xr
 
 short = False #whether or not to cut AEO:DE and AEO where gcp != 3
 
-cec_odds = True #reduce rows to include only CEC odd numbers
+cec_odds = False #reduce rows to include only CEC odd numbers
 
 commas = False #whether to use latex delims of comma delimes
 

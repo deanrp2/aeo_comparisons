@@ -284,8 +284,6 @@ def run_battery(opt, ddict, fevals = 1000, trials = 5, dims = "all", benchset = 
 
         if argdict["is_aeo"] == True:
             _, _, aeo_log = optimizer.evolute(argdict["n"], stop_criteria = stop_crit)
-            print("Cycles run", aeo_log.attrs["Ncycles"])
-            print("Cycles req", argdict["n"])
         else:
             optimizer.evolute(argdict["n"] + 1) #one extra in case of rounding when getting ngen
         y = min(thisf.outs[:argdict["fevals"]])
